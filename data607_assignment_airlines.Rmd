@@ -1,0 +1,101 @@
+---
+title: "data607_assignment04"
+author: "Mahmud Hasan Al Raji"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load libraries
+
+```{r }
+library(RCurl)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+```
+
+## Getting the flight data from github 
+
+```{r }
+x<-getURL("https://raw.githubusercontent.com/Raji030/607assignment04_data/main/data607_airlines_delayed_data.csv")
+flight_data<-data.frame(read.csv(text=x, header = T, sep=";", na.strings=c("","NA")))
+flight_data
+```
+## Data cleaning
+
+```{r }
+#Renaming columns
+
+colnames(flight_data)<-c("airlines","status","los angeles","phoenix","san diego","san francisco","seattle")
+
+# Deleting empty row
+
+flight_data<-flight_data[-3,]
+
+# Replacing NA values in the airlines column with the value prior to it
+
+flight_data<-fill(flight_data,airlines)
+
+```
+
+## Reshaping clean data 
+
+```{r }
+# Gathering values from 3rd, 4th, 5th, 6th and 7th columns and putting those values into their own columns
+
+flight_data<-gather(flight_data,key="destination",value="flight_count",3:7) %>% spread(status,flight_count)
+
+# Renaming on time column
+flight_data<-rename(flight_data,c("ontime"="on time"))
+
+# Adding two new columns
+flight_data<- mutate(flight_data, total=delayed+ontime, proportion_delayed=delayed/total)
+```
+
+##Add new column Total and perform the proportion of delayed into another column Proportion_Delayed.
+
+{r }
+flight_data<-rename(flight_data,c("ontime"="on time"))
+flight_data
+flight_data<- mutate(flight_data, total=delayed+ontime, proportion_delayed=delayed/total)
+flight_data
+
+
+## Arival delays anaysis:
+
+# Graphical representation of airline's arrival delays by city airports
+```{r }
+ggplot(flight_data, aes(x = destination, y = proportion_delayed, fill = airlines)) + geom_bar(stat="identity", position="dodge") + xlab("destination") + ylab("proportion delayed")+ggtitle("Fig-1")
+```
+
+## Creating performance table where each cell value shows as a proportion of the column sum
+
+```{r }
+
+flight1 <- flight_data[,c(1,3:4)]
+flight2<-flight1%>%group_by(airlines) %>% summarize_each(funs(sum))
+performance_table <- matrix(c(flight2$delayed,flight2$ontime),ncol=2,nrow=2,byrow=FALSE)
+dimnames(performance_table) = list(c("Alaska", "Am WEST"), c("delayed", "ontime"))
+round(prop.table(performance_table,2)*100, digits=2)                                         
+```
+
+## Graphical representation of airlines performance 
+
+```{r }
+barplot(prop.table(performance_table,2)*100, beside=T, ylab="%", ylim=c(0,100), main="Flight Performance", col=c("blue", "red"))
+legend("center", legend = c("ALASKA", "AM WEST"), fill = c("blue", "red"),cex=0.85)
+
+```
+
+## Conclusion
+
+From Fig-1, it is seen that Am West airline's arrival delays occur more frequently than Alaska airline in different city's airports.It is also seen that both the airlines have the highest arrival delay rate at San Francisco airport and the lowest arrival delay rate at Phoenix airport.
+
+From the performance table and flight performance plot, it is seen that Alaska airline's performance is better than Am West airline's performance. The Am West airline's arrival delay is about 22% more than the Alaska airline's arrival delay.Also, The Alaska airline is about 32% more likely to be on time than the Am West airline. Therefore, the Alaska airline is better option here to choose for travel.
+
